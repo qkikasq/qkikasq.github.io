@@ -27,11 +27,19 @@
       margin:0;
       color:var(--text);
       font-family: "Georgia", "Times New Roman", serif;
+      /* Убран background-attachment: fixed, из-за которого лагал скролл на мобильных */
+    }
+
+    /* Новый способ задать фиксированный фон без лагов при скролле */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
       background:
         radial-gradient(circle at top left, rgba(255,255,255,.55), transparent 28%),
         radial-gradient(circle at bottom right, rgba(255,255,255,.35), transparent 24%),
         linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 45%, var(--bg3) 100%);
-      background-attachment: fixed;
     }
 
     .scene{
@@ -57,7 +65,7 @@
       transform:translateX(-50%);
       pointer-events:none;
       opacity:.8;
-      z-index: 0;
+      z-index: -1;
     }
 
     .pattern{
@@ -516,7 +524,7 @@
   <div class="scene">
     <div class="content">
       <section class="hero">
-        <div class="badge">💗 С любовью для доченьки💗</div>
+        <div class="badge">💗 С любовью для доченьки 💗</div>
         <h1>С годовщиной, любимая</h1>
         <p class="subtitle">
           я сделал для тебя сайт на который ты сможешь заходить каждый день и смотреть новую милую записочку а ещё мы сможем каждый день играть в задания
@@ -543,7 +551,7 @@
           <div class="reason-text" id="dailyReason"></div>
         </div>
 
-        <!-- БЛОК: Генератор мини-заданий (разделенный) -->
+        <!-- БЛОК: Генератор мини-заданий -->
         <div class="reason-card ai-container">
           <div class="reason-label">Нейросеть генерирует милое задание для нас</div>
           <div class="ai-output" id="aiOutput">Нажмите на одну из кнопок ниже ✨</div>
@@ -564,7 +572,7 @@
     // ---------------------------------------------------
     // ЛОГИКА ИИ ГЕНЕРАТОРА ЗАДАНИЙ (2 КНОПКИ)
     // ---------------------------------------------------
-const tasksGirl = [
+    const tasksGirl = [
   "Крепко обними своего папочку и шепни ему на ушко, как сильно ты его любишь, доченька 🫂",
   "Сядь папочке на колени, обхвати его руками за шею и нежно поцелуй в носик 🥰",
   "Возьми папочку за руку, переплети пальчики и держи так целых 10 минут, не отпуская 🤝",
@@ -715,7 +723,7 @@ const tasksGirl = [
   "Загадай желание, связанное с вами, и скажи его папочке вслух 🌠"
 ];
 
-const tasksGuy = [
+    const tasksGuy = [
   "Подойди к своей девушке, нежно обними со спины и поцелуй в шею или макушку 👑",
   "Скажи ей, какая она сегодня невероятно красивая и особенная 🌸",
   "Сделай ей легкий и приятный массаж плеч или ручек 💆‍♀️",
@@ -850,24 +858,22 @@ const tasksGuy = [
 
     let currentTaskIndexGirl = 0;
     let currentTaskIndexGuy = 0;
-    let isGenerating = false; // Блокировка от двойных нажатий
+    let isGenerating = false;
 
     async function generateAITask(person) {
-      if (isGenerating) return; // Если уже генерируется, выходим
+      if (isGenerating) return;
       isGenerating = true;
 
       const btnGirl = document.getElementById('btnGirl');
       const btnGuy = document.getElementById('btnGuy');
       const output = document.getElementById('aiOutput');
 
-      // Блокируем ОБЕ кнопки на время генерации
       btnGirl.disabled = true;
       btnGuy.disabled = true;
       output.textContent = "";
 
       let currentTask = "";
 
-      // Определяем, чья кнопка нажата и берем соответствующее задание
       if (person === 'girl') {
         btnGirl.textContent = "ИИ думает...";
         currentTask = tasksGirl[currentTaskIndexGirl];
@@ -878,34 +884,42 @@ const tasksGuy = [
         currentTaskIndexGuy = (currentTaskIndexGuy + 1) % tasksGuy.length;
       }
 
-      // Имитируем задержку "думания" (0.5 - 1 секунды)
       await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
 
       if (person === 'girl') btnGirl.textContent = "Печатаю ответ...";
       else btnGuy.textContent = "Печатаю ответ...";
 
-      // Эффект печати текста
       for (let i = 0; i < currentTask.length; i++) {
         output.textContent += currentTask.charAt(i);
-        // Скорость печати
         await new Promise(resolve => setTimeout(resolve, 25 + Math.random() * 30));
       }
 
-      // Возвращаем кнопки в исходное состояние
       btnGirl.textContent = "Следующее задание для девушки";
       btnGuy.textContent = "Следующее задание для парня";
       btnGirl.disabled = false;
       btnGuy.disabled = false;
       
-      isGenerating = false; // Снимаем блокировку
+      isGenerating = false;
     }
 
 
     // ---------------------------------------------------
-    // ТАЙМЕР И ОСТАЛЬНАЯ ЛОГИКА САЙТА
+    // ТАЙМЕР И ЛОГИКА (ВСЕ ВРЕМЯ СТРОГО ПО МСК UTC+3)
     // ---------------------------------------------------
-    const startDate = new Date("2025-03-19T22:01:19");
-    const reasonStartDate = new Date("2026-03-27T00:00:00");
+
+    // Функция для получения текущего времени всегда строго по Москве (МСК)
+    function getMSKNow() {
+      const d = new Date();
+      // Высчитываем миллисекунды текущего времени в UTC
+      const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+      // Добавляем 3 часа для МСК (3 * 60 * 60 * 1000)
+      return new Date(utc + (3 * 3600000));
+    }
+
+    // Задаем даты старта. Месяцы в JS начинаются с 0, поэтому 2 = март.
+    // Эти объекты Date будут корректно взаимодействовать с функцией getMSKNow()
+    const startDate = new Date(2025, 2, 19, 22, 1, 19);     // 19 марта 2025 22:01:19
+    const reasonStartDate = new Date(2026, 2, 27, 0, 0, 0); // 27 марта 2026 00:00:00
 
     const reasons = {
       0: "Потому что ты единственная в ком я уверен что буду с ней до конца",
@@ -1007,7 +1021,8 @@ const tasksGuy = [
     }
 
     function updateTimer() {
-      const now = new Date();
+      // Используем время по МСК вместо локального
+      const now = getMSKNow();
 
       let years = now.getFullYear() - startDate.getFullYear();
       let months = now.getMonth() - startDate.getMonth();
@@ -1028,6 +1043,11 @@ const tasksGuy = [
 
       if (months < 0) { months += 12; years--; }
 
+      // Добавлена защита от отрицательных чисел, если время еще не наступило
+      if (now < startDate) {
+        years = months = days = hours = minutes = seconds = 0;
+      }
+
       document.getElementById("years").textContent = years;
       document.getElementById("months").textContent = months;
       document.getElementById("days").textContent = days;
@@ -1037,16 +1057,18 @@ const tasksGuy = [
     }
 
     function updateDailyReason() {
-      const today = new Date();
+      // Используем время по МСК вместо локального
+      const todayMSK = getMSKNow();
+      
       const start = new Date(reasonStartDate.getFullYear(), reasonStartDate.getMonth(), reasonStartDate.getDate());
-      const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const current = new Date(todayMSK.getFullYear(), todayMSK.getMonth(), todayMSK.getDate());
 
       const dayIndex = Math.floor((current - start) / (1000 * 60 * 60 * 24));
       
       let text;
       
       if (dayIndex < 0) {
-         text = "Ждем 25 марта 2026 года ❤️";
+         text = "Ждем 27 марта 2026 года ❤️";
       } else {
          text = reasons[dayIndex] || "Сегодня я люблю тебя ещё сильнее, чем вчера.";
       }
